@@ -12,7 +12,9 @@ import {
     ObjectMethod,
     ArrayExpression,
     Identifier,
-    ImportDeclaration,
+    CallExpression,
+    Expression,
+    StringLiteral,
 } from '@babel/types';
 // const filePath = process.argv.slice(2)[0];
 // const fileFullPath = resolve(__dirname, filePath);
@@ -65,20 +67,11 @@ function generateSuperClass(mixins: ArrayExpression | null) {
     };
 }
 
-function getMixins(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
-    const mixinIndex = objProperties.findIndex(prop => {
-        return prop.type === 'ObjectProperty'
-            && prop.key.name == 'mixins';
-    });
-    if (mixinIndex === -1) {
+function getMixins(mixins: ObjectProperty | null) {
+    if (mixins === null) {
         return null;
     }
-    const mixins = objProperties.splice(
-        mixinIndex,
-        1,
-    )[0];
-
-    const elements = ((mixins as ObjectProperty).value as ArrayExpression).elements.map(element => {
+    const elements = (mixins.value as ArrayExpression).elements.map(element => {
         return {
             type: 'Identifier',
             name: (element as Identifier).name,
@@ -90,29 +83,93 @@ function getMixins(objProperties: (ObjectMethod | ObjectProperty | SpreadElement
     } as ArrayExpression;
 }
 
+function getProp(type: string, objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+    const index = objProperties.findIndex(prop => {
+        return prop.type === 'ObjectProperty'
+            && prop.key.name === type;
+    });
+    if (index === -1) {
+        return null;
+    }
+    return objProperties.splice(
+        index,
+        1,
+    )[0] as ObjectProperty;
+}
+
+function getComponentArguments(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+    const components = getProp('components', objProperties);
+    const directives = getProp('directives', objProperties);
+    const watch = getProp('watch', objProperties);
+    if (!components && !directives && !watch) {
+        return null;
+    }
+    return [{
+        type: 'ObjectExpression',
+        properties: [components, directives, watch]
+            .filter(item => !!item)
+            .map(item => {
+                return {
+                    type: (item as ObjectProperty).type,
+                    value: (item as ObjectProperty).value,
+                    key: (item as ObjectProperty).key,
+                };
+            })
+    }] as Expression[];
+}
+
+function generateComponentDecorator(componentArguments: Expression[] | null) {
+    if (componentArguments === null) {
+        return {
+            type: 'Identifier',
+            name: 'Component',
+        };
+    }
+    return {
+        type: 'CallExpression',
+        callee: {
+            type: 'Identifier',
+            name: 'Component',
+        },
+        arguments: componentArguments,
+    } as CallExpression
+}
+function kebabCase2PascalCase(name: string) {
+    return name.slice(0, 1).toUpperCase()
+        + name.replace(/-([a-z])/g, g => g[1].toUpperCase()).slice(1);
+}
+
+function generateName(name: string) {
+    if (!name.includes('/')) {
+        return kebabCase2PascalCase(name);
+    }
+    const lastSlashIndex = name.lastIndexOf('/');
+    const lastDotIndex = name.lastIndexOf('.');
+    return kebabCase2PascalCase(name.slice(lastSlashIndex + 1, lastDotIndex));
+}
+
 function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
     const objProperties = (node.declaration as ObjectExpression).properties;
     // 此处为了挂载class component方便，所以对原有properties做mutable操作
-    const mixin = getMixins(objProperties);
+    const mixins = getMixins(getProp('mixins', objProperties));
+    const componentArguments = getComponentArguments(objProperties);
+    const nameProperty = getProp('name', objProperties);
+    const name = nameProperty && (nameProperty.value as StringLiteral).value
+        || fileFullPath;
+
     const exportValue = {
         type: 'ExportDefaultDeclaration',
         declaration: {
             type: 'ClassDeclaration',
             decorators: [{
                 type: 'Decorator',
-                expression: {
-                    type: 'CallExpression',
-                    callee: {
-                        type: 'Identifier',
-                        name: 'Component',
-                    },
-                }
+                expression: generateComponentDecorator(componentArguments),
             }],
             id: {
                 type: 'Identifier',
-                name: 'LiveDetail'
+                name: generateName(name),
             },
-            superClass: generateSuperClass(mixin),
+            superClass: generateSuperClass(mixins),
         } as ClassDeclaration,
     } as ExportDefaultDeclaration;
     return exportValue;
