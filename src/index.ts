@@ -15,6 +15,10 @@ import {
     CallExpression,
     Expression,
     StringLiteral,
+    ReturnStatement,
+    ClassProperty,
+    ClassMethod,
+    FunctionExpression,
 } from '@babel/types';
 // const filePath = process.argv.slice(2)[0];
 // const fileFullPath = resolve(__dirname, filePath);
@@ -83,9 +87,13 @@ function getMixins(mixins: ObjectProperty | null) {
     } as ArrayExpression;
 }
 
-function getProp(type: string, objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+function getProp(
+    type: string,
+    objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[],
+    keyType: 'ObjectMethod' | 'ObjectProperty' = 'ObjectProperty'
+) {
     const index = objProperties.findIndex(prop => {
-        return prop.type === 'ObjectProperty'
+        return prop.type === keyType
             && prop.key.name === type;
     });
     if (index === -1) {
@@ -94,7 +102,7 @@ function getProp(type: string, objProperties: (ObjectMethod | ObjectProperty | S
     return objProperties.splice(
         index,
         1,
-    )[0] as ObjectProperty;
+    )[0] as ObjectProperty | ObjectMethod;
 }
 
 function getComponentArguments(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
@@ -148,15 +156,68 @@ function generateName(name: string) {
     return kebabCase2PascalCase(name.slice(lastSlashIndex + 1, lastDotIndex));
 }
 
+function transformData(data: ObjectMethod) {
+    const nodes = data.body.body;
+    if (nodes.some(node => node.type !== 'ReturnStatement')) {
+        throw new Error('Data Block should has local statement!');
+    }
+    const node = (nodes[0] as ReturnStatement).argument as ObjectExpression;
+    if (node.type !== 'ObjectExpression') {
+        throw new Error('Return value should be an ObjectExpression');
+    }
+    return transformToClassBodyProp(node, 'ClassProperty');
+}
+
+function transformToClassBodyProp(node: ObjectExpression, type: 'ClassProperty' | 'ClassMethod') {
+    return node.properties.map(item => {
+        const result = {
+            type,
+            static: false,
+            key: {
+                ...(item as ObjectProperty).key,
+            },
+            computed: false,
+        };
+        if (type === 'ClassProperty') {
+            if (item.type !== 'ObjectProperty') {
+                throw new Error(`Transform data error, type '${item.type}' is not support`);
+            }
+            return {
+                ...result,
+                value: {
+                    ...(item as ObjectProperty).value,
+                }
+            } as ClassProperty;
+        }
+
+        if (item.type === 'ObjectProperty') {
+            throw new Error(`The method '${item.key.name}' is not an Object method`);
+        }
+        return {
+            ...result,
+            kind: 'method',
+            generator: false,
+            async: false,
+            params: (item as ObjectMethod).params,
+            body: (item as ObjectMethod).body,
+        } as ClassMethod;
+    });
+}
+
 function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
     const objProperties = (node.declaration as ObjectExpression).properties;
     // 此处为了挂载class component方便，所以对原有properties做mutable操作
-    const mixins = getMixins(getProp('mixins', objProperties));
+    const mixins = getMixins(getProp('mixins', objProperties) as ObjectProperty);
     const componentArguments = getComponentArguments(objProperties);
-    const nameProperty = getProp('name', objProperties);
+    const nameProperty = getProp('name', objProperties)  as ObjectProperty;
     const name = nameProperty && (nameProperty.value as StringLiteral).value
         || fileFullPath;
-
+    // TODO后面如果为了通用化的化需要把这里搞一下变成插件机制
+    const dataProperties = transformData(getProp('data', objProperties, 'ObjectMethod') as ObjectMethod);
+    const methodsProperties = transformToClassBodyProp(
+        (getProp('methods', objProperties) as ObjectProperty).value as ObjectExpression,
+        'ClassMethod'
+    )
     const exportValue = {
         type: 'ExportDefaultDeclaration',
         declaration: {
@@ -170,6 +231,13 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
                 name: generateName(name),
             },
             superClass: generateSuperClass(mixins),
+            body: {
+                type: 'ClassBody',
+                body: [
+                    ...dataProperties,
+                    ...methodsProperties,
+                ]
+            }
         } as ClassDeclaration,
     } as ExportDefaultDeclaration;
     return exportValue;
