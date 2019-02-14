@@ -168,39 +168,90 @@ function transformData(data: ObjectMethod) {
     return transformToClassBodyProp(node, 'ClassProperty');
 }
 
-function transformToClassBodyProp(node: ObjectExpression, type: 'ClassProperty' | 'ClassMethod') {
-    return node.properties.map(item => {
-        const result = {
-            type,
-            static: false,
-            key: {
-                ...(item as ObjectProperty).key,
-            },
-            computed: false,
-        };
-        if (type === 'ClassProperty') {
-            if (item.type !== 'ObjectProperty') {
-                throw new Error(`Transform data error, type '${item.type}' is not support`);
-            }
-            return {
-                ...result,
-                value: {
-                    ...(item as ObjectProperty).value,
-                }
-            } as ClassProperty;
-        }
-
-        if (item.type === 'ObjectProperty') {
-            throw new Error(`The method '${item.key.name}' is not an Object method`);
+const transformPropCallBackMap = {
+    ClassProperty(item: ObjectProperty | ObjectMethod | SpreadElement) {
+        if (item.type !== 'ObjectProperty') {
+            throw new Error(`Transform data error, type '${item.type}' is not support`);
         }
         return {
-            ...result,
+            type: 'ClassProperty',
+            static: false,
+            key: (item as ObjectProperty).key,
+            computed: false,
+            value: {
+                ...(item as ObjectProperty).value,
+            }
+        } as ClassProperty;
+    },
+    ClassMethod(item: ObjectProperty | ObjectMethod | SpreadElement) {
+        if (item.type !== 'ObjectMethod') {
+            throw new Error(`Transform methods error, type '${item.type}' is not support`);
+        }
+        return {
+            type: 'ClassMethod',
+            static: false,
+            key: (item as ObjectMethod).key,
+            computed: false,
             kind: 'method',
-            generator: false,
-            async: false,
+            generator: (item as ObjectMethod).generator,
+            async: (item as ObjectMethod).async,
             params: (item as ObjectMethod).params,
             body: (item as ObjectMethod).body,
         } as ClassMethod;
+    },
+    ClassAccessProperty(item: ObjectProperty | ObjectMethod | SpreadElement) {
+        if (item.type === 'SpreadElement') {
+            throw new Error(`Transform computed error, type '${item.type}' is not support`);
+        }
+        const common = {
+            type: 'ClassMethod',
+            static: false,
+            key: (item as ObjectMethod).key,
+            computed: false,
+        }
+        if (item.type === 'ObjectMethod') {
+            return {
+                ...common,
+                generator: (item as ObjectMethod).generator,
+                async: (item as ObjectMethod).async,
+                kind: 'get',
+                params: (item as ObjectMethod).params,
+                body: (item as ObjectMethod).body,
+            } as ClassMethod;
+        }
+        const properties = (item.value as ObjectExpression).properties.map(item => {
+            debugger;
+            return {
+                ...common,
+                generator: (item as ObjectMethod).generator,
+                async: (item as ObjectMethod).async,
+                kind: (item as ObjectMethod | ObjectProperty).key.name,
+                params: (item as ObjectMethod).params
+                || ((item as ObjectProperty).value as FunctionExpression).params,
+                body: (item as ObjectMethod).body
+                    || ((item as ObjectProperty).value as FunctionExpression).body,
+            } as ClassMethod;
+        });
+        return properties;
+    }
+}
+
+function transformToClassBodyProp(
+    node: ObjectExpression,
+    type: 'ClassProperty' | 'ClassMethod',
+    isAccessProp?: boolean
+) {
+    if (type === 'ClassMethod' && isAccessProp) {
+        return node.properties.map(item => {
+            return transformPropCallBackMap.ClassAccessProperty(item);
+        }).reduce((list: ClassMethod[], item) => {
+            return Array.isArray(item)
+                ? [...list, ...item]
+                : [...list, item];
+        }, [] as ClassMethod[]);
+    }
+    return node.properties.map(item => {
+        return transformPropCallBackMap[type](item);
     });
 }
 
@@ -217,7 +268,12 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
     const methodsProperties = transformToClassBodyProp(
         (getProp('methods', objProperties) as ObjectProperty).value as ObjectExpression,
         'ClassMethod'
-    )
+    );
+    const computedProperties = transformToClassBodyProp(
+        (getProp('computed', objProperties) as ObjectProperty).value as ObjectExpression,
+        'ClassMethod',
+        true,
+    );
     const exportValue = {
         type: 'ExportDefaultDeclaration',
         declaration: {
@@ -236,6 +292,7 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
                 body: [
                     ...dataProperties,
                     ...methodsProperties,
+                    ...computedProperties,
                 ]
             }
         } as ClassDeclaration,
