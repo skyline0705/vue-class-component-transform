@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "allowJs": true,
         "target": "esnext",
         "module": "commonjs",
         "strict": true,
@@ -13,6 +12,7 @@
         "resolveJsonModule": true,
         "sourceMap": true,
         "baseUrl": ".",
+        "declaration": true,
         "paths": {
             "@/*": [
                 "src/*"
@@ -23,7 +23,8 @@
             "dom",
             "dom.iterable",
             "scripthost"
-        ]
+        ],
+        "outDir": "./lib"
     },
     "include": [
         "src/**/*.ts",

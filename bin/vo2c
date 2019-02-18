@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+const { resolve } = require('path');
+const { readFileSync, writeFileSync } = require('fs');
+const filePath = process.argv.slice(2)[0];
+const fileFullPath = resolve(__dirname, filePath);
+const transform = require('../lib/index.js')
+transform(fileFullPath);
