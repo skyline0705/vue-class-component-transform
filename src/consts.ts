@@ -66,13 +66,24 @@ export const vueClassComponentImport = {
                 type: 'Identifier',
                 name: 'Inject'
             }
+        },
+        {
+            type: 'ImportSpecifier',
+            imported: {
+                type: 'Identifier',
+                name: 'Provide'
+            },
+            local: {
+                type: 'Identifier',
+                name: 'Provide'
+            }
         }
     ],
     source: {
         type: 'StringLiteral',
         extra: {
             rawValue: '@/utils/vue-decorators',
-            raw: '@/utils/vue-decorators'
+            raw: '\'@/utils/vue-decorators\''
         },
         value: '@/utils/vue-decorators'
     },

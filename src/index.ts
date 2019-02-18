@@ -90,11 +90,12 @@ function getMixins(mixins: ObjectProperty | null) {
 function getProp(
     type: string,
     objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[],
-    keyType: 'ObjectMethod' | 'ObjectProperty' = 'ObjectProperty'
 ) {
     const index = objProperties.findIndex(prop => {
-        return prop.type === keyType
-            && prop.key.name === type;
+        if (prop.type === 'SpreadElement') {
+            throw new Error(`Get prop not support type ${prop.type}`);
+        }
+        return prop.key.name === type;
     });
     if (index === -1) {
         return null;
@@ -220,7 +221,6 @@ const transformPropCallBackMap = {
             } as ClassMethod;
         }
         const properties = (item.value as ObjectExpression).properties.map(item => {
-            debugger;
             return {
                 ...common,
                 generator: (item as ObjectMethod).generator,
@@ -255,6 +255,110 @@ function transformToClassBodyProp(
     });
 }
 
+const transformPropsMap = {
+    metaInfo(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        const metaInfo = getProp('metaInfo', objProperties);
+        if (!metaInfo) {
+            return []
+        }
+        return [{
+            ...metaInfo,
+            type: metaInfo.type === 'ObjectProperty'
+                ? 'ClassProperty'
+                : 'ClassMethod',
+            decorators: [{
+                type: 'Decorator',
+                expression: {
+                    type: 'Identifier',
+                    name: 'Meta'
+                }
+            }],
+        } as ClassMethod | ClassProperty];
+    },
+    inject(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        const inject = getProp('inject', objProperties);
+        if (!inject) {
+            return []
+        }
+        if (inject.type !== 'ObjectProperty') {
+            throw new Error(`Transform inject error, type '${inject.type}' is not support`)
+        }
+        const elements = (inject.value as ArrayExpression).elements as StringLiteral[];
+        if (!elements.length) {
+            return [];
+        }
+        return elements.map(element => {
+            return {
+                type: 'ClassProperty',
+                decorators: [{
+                    type: 'Decorator',
+                    expression: {
+                        type: 'CallExpression',
+                        callee: {
+                            type: 'Identifier',
+                            name: 'Inject'
+                        },
+                        arguments: [] as Expression[]
+                    }
+                }],
+                static: false,
+                key: {
+                    type: 'Identifier',
+                    name: element.value,
+                },
+                value: null,
+            } as ClassProperty;
+        });
+    },
+    models(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        const models = getProp('models', objProperties);
+        if (!models) {
+            return []
+        }
+        if (models.type !== 'ObjectProperty') {
+            throw new Error(`Transform models error, type '${models.type}' is not support`)
+        }
+        return [{
+            type: 'ClassProperty',
+            decorators: [{
+                type: 'Decorator',
+                expression: {
+                    type: 'CallExpression',
+                    callee: {
+                        type: 'Identifier',
+                        name: 'Models'
+                    },
+                    arguments: [(models as ObjectProperty).value],
+                }
+            }],
+            static: false,
+            key: {
+                type: 'Identifier',
+                name: '$models',
+            },
+            value: null,
+        } as ClassProperty];
+    },
+    data(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        return transformData(getProp('data', objProperties) as ObjectMethod);
+    },
+    methods(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        return transformToClassBodyProp(
+            (getProp('methods', objProperties) as ObjectProperty).value as ObjectExpression,
+            'ClassMethod'
+        );
+    },
+    computed(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        return transformToClassBodyProp(
+            (getProp('computed', objProperties) as ObjectProperty).value as ObjectExpression,
+            'ClassMethod',
+            true,
+        );
+    },
+}
+
+type propType = keyof typeof transformPropsMap;
+
 function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
     const objProperties = (node.declaration as ObjectExpression).properties;
     // 此处为了挂载class component方便，所以对原有properties做mutable操作
@@ -263,17 +367,11 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
     const nameProperty = getProp('name', objProperties)  as ObjectProperty;
     const name = nameProperty && (nameProperty.value as StringLiteral).value
         || fileFullPath;
-    // TODO后面如果为了通用化的化需要把这里搞一下变成插件机制
-    const dataProperties = transformData(getProp('data', objProperties, 'ObjectMethod') as ObjectMethod);
-    const methodsProperties = transformToClassBodyProp(
-        (getProp('methods', objProperties) as ObjectProperty).value as ObjectExpression,
-        'ClassMethod'
-    );
-    const computedProperties = transformToClassBodyProp(
-        (getProp('computed', objProperties) as ObjectProperty).value as ObjectExpression,
-        'ClassMethod',
-        true,
-    );
+
+    const properties = Object.keys(transformPropsMap).map(key => {
+        return transformPropsMap[key as propType](objProperties);
+    }).reduce((prev, next) => [...prev, ...next]);
+
     const exportValue = {
         type: 'ExportDefaultDeclaration',
         declaration: {
@@ -289,11 +387,7 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration) {
             superClass: generateSuperClass(mixins),
             body: {
                 type: 'ClassBody',
-                body: [
-                    ...dataProperties,
-                    ...methodsProperties,
-                    ...computedProperties,
-                ]
+                body: properties,
             }
         } as ClassDeclaration,
     } as ExportDefaultDeclaration;
