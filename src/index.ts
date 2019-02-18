@@ -306,17 +306,32 @@ const transformPropsMap = {
         } as ClassProperty];
     },
     data(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
-        return transformData(getProp('data', objProperties) as ObjectMethod);
+        const data = getProp('data', objProperties);
+        if (!data) {
+            return [];
+        }
+        if (data.type === 'ObjectProperty') {
+            throw new Error('Transform Data don\'t support Object Expression Data')
+        }
+        return transformData(data);
     },
     methods(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        const methods = getProp('methods', objProperties);
+        if (!methods) {
+            return [];
+        }
         return transformToClassBodyProp(
-            (getProp('methods', objProperties) as ObjectProperty).value as ObjectExpression,
+            (methods as ObjectProperty).value as ObjectExpression,
             'ClassMethod'
         );
     },
     computed(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        const computed = getProp('computed', objProperties);
+        if (!computed) {
+            return [];
+        }
         return transformToClassBodyProp(
-            (getProp('computed', objProperties) as ObjectProperty).value as ObjectExpression,
+            (computed as ObjectProperty).value as ObjectExpression,
             'ClassMethod',
             true,
         );
@@ -375,14 +390,29 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration, in
     return exportValue;
 }
 
-export default function transform(input: string, output: string = input) {
-    const file = readFileSync(input).toString('utf-8');
+export default function transform(inputPath: string, outputPath: string = inputPath) {
+    const file = readFileSync(inputPath).toString('utf-8');
+    const scriptIndex = file.indexOf('<script');
+    const isVue = scriptIndex !== -1;
+    let input = file;
+    let start = '';
+    let end = '';
+    if (isVue) {
+        const scriptEndIndex = file.lastIndexOf('</script>');
+        start = file.slice(0, scriptIndex);
+        end = file.slice(scriptEndIndex);
+        input = file.slice(start.length, file.indexOf(end));
+        const index = input.indexOf('>') + 1;
+        start += input.slice(0, index);
+        input = input.slice(index);
+    }
     // @ts-ignore
-    const ast = parse(file, {
+    const ast = parse(input, {
         sourceType: 'module',
         plugins: [
             // @ts-ignore
             [ 'decorators', {decoratorsBeforeExport: true }],
+            // @ts-ignore
             'classProperties',
         ]
     });
@@ -390,7 +420,7 @@ export default function transform(input: string, output: string = input) {
     const exportDefaultDeclarationIndex = ast.program.body.findIndex(node => node.type === 'ExportDefaultDeclaration');
     ast.program.body[exportDefaultDeclarationIndex] = transformObjectBasedComponentToClass(
         ast.program.body[exportDefaultDeclarationIndex] as ExportDefaultDeclaration,
-        input,
+        inputPath,
     );
     // 全局那一堆import
     // @ts-ignore
@@ -400,5 +430,5 @@ export default function transform(input: string, output: string = input) {
         // @ts-ignore
         decoratorsBeforeExport: true,
     });
-    writeFileSync(output, result.code);
+    writeFileSync(outputPath, `${start}\n${result.code}\n${end}`);
 }

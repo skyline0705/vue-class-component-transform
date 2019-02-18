@@ -37,16 +37,6 @@
     source-map "^0.5.0"
     trim-right "^1.0.1"
 
-"@babel/helper-create-class-features-plugin@^7.3.0":
-  version "7.3.2"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-create-class-features-plugin/-/helper-create-class-features-plugin-7.3.2.tgz#ba1685603eb1c9f2f51c9106d5180135c163fe73"
-  dependencies:
-    "@babel/helper-function-name" "^7.1.0"
-    "@babel/helper-member-expression-to-functions" "^7.0.0"
-    "@babel/helper-optimise-call-expression" "^7.0.0"
-    "@babel/helper-plugin-utils" "^7.0.0"
-    "@babel/helper-replace-supers" "^7.2.3"
-
 "@babel/helper-function-name@^7.1.0":
   version "7.1.0"
   resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-function-name/-/helper-function-name-7.1.0.tgz#a0ceb01685f73355d4360c1247f582bfafc8ff53"
@@ -59,31 +49,6 @@
   version "7.0.0"
   resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-get-function-arity/-/helper-get-function-arity-7.0.0.tgz#83572d4320e2a4657263734113c42868b64e49c3"
   dependencies:
-    "@babel/types" "^7.0.0"
-
-"@babel/helper-member-expression-to-functions@^7.0.0":
-  version "7.0.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-member-expression-to-functions/-/helper-member-expression-to-functions-7.0.0.tgz#8cd14b0a0df7ff00f009e7d7a436945f47c7a16f"
-  dependencies:
-    "@babel/types" "^7.0.0"
-
-"@babel/helper-optimise-call-expression@^7.0.0":
-  version "7.0.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-optimise-call-expression/-/helper-optimise-call-expression-7.0.0.tgz#a2920c5702b073c15de51106200aa8cad20497d5"
-  dependencies:
-    "@babel/types" "^7.0.0"
-
-"@babel/helper-plugin-utils@^7.0.0":
-  version "7.0.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-plugin-utils/-/helper-plugin-utils-7.0.0.tgz#bbb3fbee98661c569034237cc03967ba99b4f250"
-
-"@babel/helper-replace-supers@^7.2.3":
-  version "7.2.3"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fhelper-replace-supers/-/helper-replace-supers-7.2.3.tgz#19970020cf22677d62b3a689561dbd9644d8c5e5"
-  dependencies:
-    "@babel/helper-member-expression-to-functions" "^7.0.0"
-    "@babel/helper-optimise-call-expression" "^7.0.0"
-    "@babel/traverse" "^7.2.3"
     "@babel/types" "^7.0.0"
 
 "@babel/helper-split-export-declaration@^7.0.0":
@@ -112,40 +77,6 @@
   version "7.3.2"
   resolved "https://npm.corp.kuaishou.com/@babel%2fparser/-/parser-7.3.2.tgz#95cdeddfc3992a6ca2a1315191c1679ca32c55cd"
 
-"@babel/plugin-proposal-class-properties@^7.3.0":
-  version "7.3.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fplugin-proposal-class-properties/-/plugin-proposal-class-properties-7.3.0.tgz#272636bc0fa19a0bc46e601ec78136a173ea36cd"
-  dependencies:
-    "@babel/helper-create-class-features-plugin" "^7.3.0"
-    "@babel/helper-plugin-utils" "^7.0.0"
-
-"@babel/plugin-proposal-decorators@^7.3.0":
-  version "7.3.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fplugin-proposal-decorators/-/plugin-proposal-decorators-7.3.0.tgz#637ba075fa780b1f75d08186e8fb4357d03a72a7"
-  dependencies:
-    "@babel/helper-create-class-features-plugin" "^7.3.0"
-    "@babel/helper-plugin-utils" "^7.0.0"
-    "@babel/plugin-syntax-decorators" "^7.2.0"
-
-"@babel/plugin-syntax-decorators@^7.2.0":
-  version "7.2.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fplugin-syntax-decorators/-/plugin-syntax-decorators-7.2.0.tgz#c50b1b957dcc69e4b1127b65e1c33eef61570c1b"
-  dependencies:
-    "@babel/helper-plugin-utils" "^7.0.0"
-
-"@babel/plugin-syntax-typescript@^7.2.0":
-  version "7.2.0"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fplugin-syntax-typescript/-/plugin-syntax-typescript-7.2.0.tgz#55d240536bd314dcbbec70fd949c5cabaed1de29"
-  dependencies:
-    "@babel/helper-plugin-utils" "^7.0.0"
-
-"@babel/plugin-transform-typescript@^7.3.2":
-  version "7.3.2"
-  resolved "https://npm.corp.kuaishou.com/@babel%2fplugin-transform-typescript/-/plugin-transform-typescript-7.3.2.tgz#59a7227163e55738842f043d9e5bd7c040447d96"
-  dependencies:
-    "@babel/helper-plugin-utils" "^7.0.0"
-    "@babel/plugin-syntax-typescript" "^7.2.0"
-
 "@babel/template@^7.1.0", "@babel/template@^7.1.2", "@babel/template@^7.2.2":
   version "7.2.2"
   resolved "https://npm.corp.kuaishou.com/@babel%2ftemplate/-/template-7.2.2.tgz#005b3fdf0ed96e88041330379e0da9a708eb2907"
@@ -154,7 +85,7 @@
     "@babel/parser" "^7.2.2"
     "@babel/types" "^7.2.2"
 
-"@babel/traverse@^7.1.5", "@babel/traverse@^7.2.2", "@babel/traverse@^7.2.3":
+"@babel/traverse@^7.1.5", "@babel/traverse@^7.2.2":
   version "7.2.3"
   resolved "https://npm.corp.kuaishou.com/@babel%2ftraverse/-/traverse-7.2.3.tgz#7ff50cefa9c7c0bd2d81231fdac122f3957748d8"
   dependencies:
