@@ -1,7 +1,7 @@
 {
   "name": "vue-class-component-transform",
   "description": "A lib transform Object-Based Vue Constructor to Class-Based Vue Constructor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "lib/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

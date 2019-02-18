@@ -18,7 +18,7 @@
 </template>
 
 <script>
-import { Component, Models, Meta, Vue, Mixins, Inject, Provide } from '@/utils/vue-decorators';
+import { Component, Models, Prop, Meta, Vue, Mixins, Inject, Provide } from '@/utils/vue-decorators';
 
 /**
  * @file 处理带有@内容的评论内容
@@ -33,6 +33,25 @@ import { transformContentAST, PROCESSORS } from '@/components/comment/parser';
   }
 })
 export default class Abc extends Vue {
+  @Prop({
+    type: String,
+    default: ''
+  })
+  content;
+  @Prop({
+    type: Array,
+
+    default() {
+      return [PROCESSORS.EMOJI, PROCESSORS.AT];
+    }
+
+  })
+  processors;
+  @Prop({
+    type: Object,
+    default: () => ({})
+  })
+  emojiStyle;
   @Models(['emoticonModel'])
   $models;
 
@@ -43,24 +62,6 @@ export default class Abc extends Vue {
     return transformContentAST(this.content, processors);
   }
 
-  props = {
-    content: {
-      type: String,
-      default: ''
-    },
-    processors: {
-      type: Array,
-
-      default() {
-        return [PROCESSORS.EMOJI, PROCESSORS.AT];
-      }
-
-    },
-    emojiStyle: {
-      type: Object,
-      default: () => ({})
-    }
-  };
 }
 </script>
 <style lang="stylus" scoped>

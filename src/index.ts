@@ -123,6 +123,33 @@ function generateName(name: string) {
     return kebabCase2PascalCase(name.slice(lastSlashIndex + 1, lastDotIndex));
 }
 
+function transformProps(props: ObjectProperty) {
+    const body = props.value;
+    if (body.type !== 'ObjectExpression') {
+        throw new Error('Transform Props only support Object Expression Props');
+    }
+    const properties = body.properties;
+    return properties.map(prop => {
+        return {
+            type: 'ClassProperty',
+            decorators: [{
+                type: 'Decorator',
+                expression: {
+                    type: 'CallExpression',
+                    callee: {
+                        type: 'Identifier',
+                        name: 'Prop'
+                    },
+                    arguments: [(prop as ObjectProperty).value]
+                }
+            }],
+            static: false,
+            key: (prop as ObjectProperty).key,
+            value: null,
+        } as ClassProperty;
+    });
+}
+
 function transformData(data: ObjectMethod) {
     const nodes = data.body.body;
     if (nodes.some(node => node.type !== 'ReturnStatement')) {
@@ -222,6 +249,16 @@ function transformToClassBodyProp(
 }
 
 const transformPropsMap = {
+    props(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
+        const props = getProp('props', objProperties);
+        if (!props) {
+            return [];
+        }
+        if (props.type !== 'ObjectProperty') {
+            throw new Error('Transform Props only support Object Expression Props')
+        }
+        return transformProps(props);
+    },
     metaInfo(objProperties: (ObjectMethod | ObjectProperty | SpreadElement)[]) {
         const metaInfo = getProp('metaInfo', objProperties);
         if (!metaInfo) {

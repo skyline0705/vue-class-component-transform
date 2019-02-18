@@ -27,6 +27,17 @@ export const vueClassComponentImport = {
             type: 'ImportSpecifier',
             imported: {
                 type: 'Identifier',
+                name: 'Prop'
+            },
+            local: {
+                type: 'Identifier',
+                name: 'Prop'
+            }
+        },
+        {
+            type: 'ImportSpecifier',
+            imported: {
+                type: 'Identifier',
                 name: 'Meta'
             },
             local: {
