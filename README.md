@@ -1,10 +1,10 @@
-# vue-class-component-transform
-A lib transform Object-Based Vue Constructor to Class-Based Vue Constructor
+# vue-composition-tranform
+A lib transform Object-Based or Class-Based Vue Constructor to Vue Composition Constructor
 
 
 
 ```shell
-npm i -g vue-class-component-transform
+npm i -g vue-composition-tranform
 vo2c input.vue output.vue
 ```
 

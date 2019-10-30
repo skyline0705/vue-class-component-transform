@@ -4,7 +4,7 @@
   "version": "0.1.1",
   "main": "lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "start": "node lib/index.js",
     "build": "tsc -p tsconfig.json"
   },
@@ -28,17 +28,20 @@
   },
   "homepage": "https://github.com/skyline0705/vue-class-component-transform#readme",
   "dependencies": {
-    "minimist": "^1.2.0",
-    "serialize-javascript": "^1.6.1",
     "@babel/core": "^7.2.2",
     "@babel/generator": "^7.3.2",
     "@babel/parser": "^7.3.2"
   },
   "devDependencies": {
     "@types/babel__generator": "^7.0.1",
+    "@types/jest": "^24.0.21",
     "@types/node": "^11.9.3",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0",
     "ts-node": "^8.0.2",
     "tslib": "^1.9.3",
-    "typescript": "^3.3.3"
+    "typescript": "^3.3.3",
+    "vue": "^2.6.10",
+    "vue-property-decorator": "^8.3.0"
   }
 }

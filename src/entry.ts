@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { parse } from '@babel/parser';
 import generate from '@babel/generator';
-import { vueClassComponentImport } from './consts';
 import {
     ExportDefaultDeclaration,
     ClassDeclaration,
@@ -18,7 +17,15 @@ import {
     ClassProperty,
     ClassMethod,
     FunctionExpression,
+    isExportDefaultDeclaration,
+    isObjectExpression,
+    isCallExpression,
+    isMemberExpression,
+    isIdentifier,
+    isDeclareClass,
+    isClassDeclaration,
 } from '@babel/types';
+import { parseOptions } from './const';
 
 function generateSuperClass(mixins: ArrayExpression | null) {
     if (mixins === null) {
@@ -390,6 +397,7 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration, in
         return transformPropsMap[key as propType](objProperties);
     }).reduce((prev, next) => [...prev, ...next]);
     const otherProperties = objProperties.map(prop => {
+        // @ts-ignore
         return {
             ...prop,
             type: prop.type === 'ObjectProperty'
@@ -426,9 +434,46 @@ function transformObjectBasedComponentToClass(node: ExportDefaultDeclaration, in
     } as ExportDefaultDeclaration;
     return exportValue;
 }
+compileToComposition('./examples/class.vue');
 
-export default function transform(inputPath: string, outputPath: string = inputPath) {
-    const file = readFileSync(inputPath).toString('utf-8');
+type TypeAndStruct = {
+    type: 'objectBased';
+    struct: ObjectExpression;
+} | {
+    type: 'classBased';
+    struct: ClassDeclaration;
+}
+
+export function getTypeAndStruct(exportDefaultDeclartion: ExportDefaultDeclaration) {
+    const declaration = exportDefaultDeclartion.declaration;
+    if (isObjectExpression(declaration)) {
+        return {
+            type: 'objectBased',
+            struct: declaration,
+        } as TypeAndStruct;
+    }
+    if (
+        isCallExpression(declaration)
+        && isMemberExpression(declaration.callee)
+        && isIdentifier(declaration.callee.property)
+        && declaration.callee.property.name === 'extend'
+        && isObjectExpression(declaration.arguments[0])
+    ) {
+        return {
+            type: 'objectBased',
+            struct: declaration.arguments[0],
+        } as TypeAndStruct;
+    } else if (isClassDeclaration(declaration)) {
+        return {
+            type: 'classBased',
+            struct: declaration,
+        }
+    }
+    throw new Error('Not support your input code');
+}
+
+export function compileToComposition(inputResource: string, outputPath: string = inputResource) {
+    const file = readFileSync(inputResource).toString('utf-8');
     const scriptIndex = file.indexOf('<script');
     const isVue = scriptIndex !== -1;
     let input = file;
@@ -443,29 +488,20 @@ export default function transform(inputPath: string, outputPath: string = inputP
         start += input.slice(0, index);
         input = input.slice(index);
     }
-    // @ts-ignore
-    const ast = parse(input, {
-        sourceType: 'module',
-        plugins: [
-            // @ts-ignore
-            [ 'decorators', {decoratorsBeforeExport: true }],
-            // @ts-ignore
-            'classProperties',
-        ]
-    });
+    const ast = parse(input, parseOptions);
 
-    const exportDefaultDeclarationIndex = ast.program.body.findIndex(node => node.type === 'ExportDefaultDeclaration');
-    ast.program.body[exportDefaultDeclarationIndex] = transformObjectBasedComponentToClass(
-        ast.program.body[exportDefaultDeclarationIndex] as ExportDefaultDeclaration,
-        inputPath,
-    );
+    const exportDefaultDeclarationIndex = ast.program.body.findIndex(node => isExportDefaultDeclaration(node));
+    const exportDefaultDeclaration = ast.program.body[exportDefaultDeclarationIndex] as ExportDefaultDeclaration;
+    const beforeAsts = ast.program.body.splice(0, exportDefaultDeclarationIndex);
+    const afterAsts = ast.program.body.splice(exportDefaultDeclarationIndex);
+    // const { type, struct } = getTypeAndStruct(exportDefaultDeclaration);
+    // ast.program.body[exportDefaultDeclarationIndex] = transformObjectBasedComponentToClass(
+    //     inputResource,
+    // );
     // 全局那一堆import
-    // @ts-ignore
-    ast.program.body.unshift(vueClassComponentImport);
-    const result = generate(ast, {
-        // 隐藏属性……先这么用着
-        // @ts-ignore
-        decoratorsBeforeExport: true,
-    });
-    writeFileSync(outputPath, `${start}\n${result.code}\n${end}`);
+    // ast.program.body.unshift(vueClassComponentImport);
+    // const result = generate(ast, {
+    //     decoratorsBeforeExport: true,
+    // });
+    // writeFileSync(outputPath, `${start}\n${result.code}\n${end}`);
 }
